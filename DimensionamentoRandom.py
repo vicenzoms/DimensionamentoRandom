@@ -9,8 +9,9 @@ import numpy as np
 from scipy.stats import poisson, norm
 import base64
 from pathlib import Path
+from PIL import Image
 
-# Configuração inicial da página (deve ser o primeiro comando)
+# Configuração inicial da página
 st.set_page_config(page_title="Dimensionamento de Sobressalentes - RANDOM", layout="wide")
 
 def image_to_base64(path):
@@ -23,7 +24,7 @@ def image_to_base64(path):
     except Exception:
         return ""
 
-# Carrega as imagens (capa de fundo e logo)
+# Carrega as imagens para a tela de login (capa de fundo e logo)
 LOGIN_BG_BASE64 = image_to_base64("capa.png")
 LOGIN_BG_URL = f"data:image/png;base64,{LOGIN_BG_BASE64}" if LOGIN_BG_BASE64 else ""
 
@@ -35,7 +36,7 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 # ==========================================
-# TELA DE LOGIN (Estilo Materialis / RANDOM)
+# TELA DE LOGIN (Branca com Padrão Verde / Materialis)
 # ==========================================
 if not st.session_state.authenticated:
     st.markdown(
@@ -53,7 +54,7 @@ if not st.session_state.authenticated:
         .main, .stApp {{ background: transparent !important; }}
         .block-container {{ max-width: 100% !important; padding: 0 !important; margin: 0 !important; }}
 
-        /* Fundo claro com gradiente sobre a imagem, padrão mais académico */
+        /* Fundo claro com gradiente sobre a imagem */
         .login-bg-full {{
             position: fixed;
             inset: 0;
@@ -102,7 +103,7 @@ if not st.session_state.authenticated:
             margin-top: 5px;
         }}
 
-        /* Estilo do Cartão (Material Design) */
+        /* Estilo do Cartão (Material Design Branco) */
         div[data-testid="stForm"] {{
             background: #ffffff !important;
             border-radius: 8px !important;
@@ -154,7 +155,7 @@ if not st.session_state.authenticated:
     st.markdown('<div class="login-bg-full"></div>', unsafe_allow_html=True)
     st.markdown('<div class="login-page-content">', unsafe_allow_html=True)
 
-    # Colunas para centralizar o formulário no ecrã
+    # Colunas para centralizar o formulário na tela
     col_vazia1, col_login, col_vazia2 = st.columns([1, 1.2, 1])
 
     with col_login:
@@ -182,11 +183,11 @@ if not st.session_state.authenticated:
                 st.error("Utilizador ou palavra-passe incorretos.")
 
     st.markdown('</div>', unsafe_allow_html=True)
-    st.stop()  # Impede que o resto do código seja executado sem login
+    st.stop()  
 
 
 # ==========================================
-# CSS DA TELA PRINCIPAL (Pós-Login)
+# CSS DA TELA PRINCIPAL (Pós-Login - Estilo Verde)
 # ==========================================
 st.markdown("""
     <style>
@@ -217,7 +218,7 @@ st.markdown("""
 
 
 # ==========================================
-# LÓGICA DA APLICAÇÃO PRINCIPAL
+# FUNÇÕES DE CÁLCULO
 # ==========================================
 def calcular_poisson(lmbda, n, t, risco_alvo):
     m = lmbda * n * t
@@ -288,58 +289,81 @@ def calcular_normal(lmbda, n, t, risco_alvo):
     return df, x_ideal, sigma
 
 
-# Cabeçalho da página principal
-st.markdown("##### RANDOM – Grupo de Pesquisa em Risco e Análise de Decisão em Operações e Manutenção")
-st.title("Dimensionamento de Sobressalentes")
-st.write("Insira os parâmetros na barra lateral à esquerda para calcular as recomendações.")
+# ==========================================
+# TELA PRINCIPAL (Template adaptado do main.py)
+# ==========================================
 
-st.sidebar.header("Parâmetros de Entrada")
+# Criando 3 colunas para centralizar a imagem no topo
+col_img1, col_img2, col_img3 = st.columns(3)
+try:
+    foto = Image.open('randomen.png')
+    col_img2.image(foto, use_container_width=True)
+except Exception:
+    pass
 
-L = st.sidebar.number_input("Lambda (taxa de falha):", min_value=0.0000, value=0.05, step=0.01, format="%.6f")
-N = st.sidebar.number_input("Número de máquinas ativas (n):", min_value=1, value=10, step=1)
-T = st.sidebar.number_input("Tempo de reposição (t):", min_value=1, value=1, step=1)
-R_PCT = st.sidebar.number_input("Risco Alvo (%):", min_value=0.01, max_value=99.99, value=5.00, step=1.0, format="%.2f")
+# Título centralizado no meio da tela
+st.markdown("<h2 style='text-align: center; color: #388E3C;'>Sistema de Dimensionamento de Sobressalentes</h2>", unsafe_allow_html=True)
 
-risco = R_PCT / 100.0
-LG = L * N
+# Menu drop-down de seleção apenas na barra lateral (conforme main.py)
+menu = ["Analytical", "Optimizer"]
+choice = st.sidebar.selectbox("Select here", menu)
 
-if st.sidebar.button("Calcular Dimensionamento"):
+if choice == menu[0]:
+    st.header(menu[0])
     
-    df_p, x_p, m_val = calcular_poisson(L, N, T, risco)
-    df_n, x_n, sigma_val = calcular_normal(L, N, T, risco)
+    st.subheader("Insert the parameter values below:")
     
-    n_10PCT = max(1, int(np.ceil(0.10 * N)))
+    # BARRAS DE INPUT NO MEIO DA TELA (Removida a atribuição à sidebar)
+    L = st.number_input("Lambda (taxa de falha):", min_value=0.0000, value=0.05, step=0.01, format="%.6f")
+    N = st.number_input("Número de máquinas ativas (n):", min_value=1, value=10, step=1)
+    T = st.number_input("Tempo de reposição (t):", min_value=1, value=1, step=1)
+    R_PCT = st.number_input("Risco Alvo (%):", min_value=0.01, max_value=99.99, value=5.00, step=1.0, format="%.2f")
 
-    st.subheader("Parâmetros Utilizados")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Valor Esperado de Falhas (m)", f"{m_val:.2f}")
-    col2.metric("Risco Alvo", f"{R_PCT}%")
-    col3.metric("Regra dos 10%", f"{n_10PCT} peças")
-
-    st.divider()
-
-    def exibir_resumo_streamlit(df, x_alvo, titulo):
-        st.subheader(titulo)
-        
-        idx_inicio = max(0, x_alvo - 1)
-        resumo = df.iloc[idx_inicio : x_alvo + 2].copy()
-        
-        # Formata as colunas em percentagem
-        resumo['P(X=x)'] = resumo['P(X=x)'].apply(lambda v: f"{v:.4%}")
-        resumo['Margem Seg.'] = resumo['Margem Seg.'].apply(lambda v: f"{v:.4%}")
-        resumo['Risco'] = resumo['Risco'].apply(lambda v: f"{v:.4%}")
-        
-        st.success(f"**Quantidade Recomendada:** {x_alvo} peças")
-        st.dataframe(resumo, use_container_width=True, hide_index=True)
-
-    col_tabela1, col_tabela2 = st.columns(2)
+    st.subheader("Click on button below to run this application:")    
+    botao = st.button("Calcular Dimensionamento")        
     
-    with col_tabela1:
-        exibir_resumo_streamlit(df_p, x_p, "Distribuição de Poisson")
+    if botao:
+        risco = R_PCT / 100.0
+        LG = L * N
         
-    with col_tabela2:
-        if LG >= 20:
-            exibir_resumo_streamlit(df_n, x_n, "Aproximação Normal")
-        else:
-            st.info("Aproximação pela Normal não recomendada (Lambda * N < 20).")
+        df_p, x_p, m_val = calcular_poisson(L, N, T, risco)
+        df_n, x_n, sigma_val = calcular_normal(L, N, T, risco)
+        
+        n_10PCT = max(1, int(np.ceil(0.10 * N)))
+
+        st.subheader("Parâmetros Utilizados")
+        col_m1, col_m2, col_m3 = st.columns(3)
+        col_m1.metric("Valor Esperado de Falhas (m)", f"{m_val:.2f}")
+        col_m2.metric("Risco Alvo", f"{R_PCT}%")
+        col_m3.metric("Regra dos 10%", f"{n_10PCT} peças")
+
+        st.divider()
+
+        def exibir_resumo_streamlit(df, x_alvo, titulo):
+            st.subheader(titulo)
+            
+            idx_inicio = max(0, x_alvo - 1)
+            resumo = df.iloc[idx_inicio : x_alvo + 2].copy()
+            
+            resumo['P(X=x)'] = resumo['P(X=x)'].apply(lambda v: f"{v:.4%}")
+            resumo['Margem Seg.'] = resumo['Margem Seg.'].apply(lambda v: f"{v:.4%}")
+            resumo['Risco'] = resumo['Risco'].apply(lambda v: f"{v:.4%}")
+            
+            st.success(f"**Quantidade Recomendada:** {x_alvo} peças")
+            st.dataframe(resumo, use_container_width=True, hide_index=True)
+
+        col_tabela1, col_tabela2 = st.columns(2)
+        
+        with col_tabela1:
+            exibir_resumo_streamlit(df_p, x_p, "Distribuição de Poisson")
+            
+        with col_tabela2:
+            if LG >= 20:
+                exibir_resumo_streamlit(df_n, x_n, "Aproximação Normal")
+            else:
+                st.info("Aproximação pela Normal não recomendada (Lambda * N < 20).")
+
+if choice == menu[1]:
+    st.header(menu[1])
+    st.write("Configurações do Optimizer indisponíveis ou destinadas a rotinas de simulação futuras.")
 
