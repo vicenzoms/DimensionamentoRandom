@@ -356,7 +356,7 @@ if choice == menu[0]:
             if LG >= 20:
                 exibir_resumo_streamlit(df_n, x_n, "Aproximação Normal")
             else:
-                st.info("Aproximação pela Normal não recomendada.")
+                st.warning("Aproximação pela Normal não recomendada.")
 
 if choice == menu[1]:
     st.header(menu[1])
