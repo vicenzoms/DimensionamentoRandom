@@ -324,7 +324,6 @@ if choice == menu[0]:
         df_p, x_p, m_val = calcular_poisson(L, N, T, risco)
         df_n, x_n, sigma_val = calcular_normal(L, N, T, risco)
         
-        # Novo Cálculo Financeiro solicitado: Custo unitário * x encontrado em Poisson
         custo_total = custo_unitario * x_p
 
         st.subheader("Parâmetros Utilizados")
