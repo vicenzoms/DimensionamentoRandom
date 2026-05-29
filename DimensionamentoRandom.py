@@ -304,7 +304,7 @@ except Exception:
 # Título centralizado no meio da tela
 st.markdown("<h2 style='text-align: center; color: #388E3C;'>Sistema de Dimensionamento de Sobressalentes</h2>", unsafe_allow_html=True)
 
-# Menu drop-down de seleção apenas na barra lateral (conforme main.py)
+# Menu drop-down de seleção apenas na barra lateral
 menu = ["Analytical", "Optimizer"]
 choice = st.sidebar.selectbox("Select here", menu)
 
@@ -313,11 +313,12 @@ if choice == menu[0]:
     
     st.subheader("Insert the parameter values below:")
     
-    # BARRAS DE INPUT NO MEIO DA TELA (Removida a atribuição à sidebar)
+    # BARRAS DE INPUT NO MEIO DA TELA
     L = st.number_input("Lambda (taxa de falha):", min_value=0.0000, value=0.05, step=0.01, format="%.6f")
     N = st.number_input("Número de máquinas ativas (n):", min_value=1, value=10, step=1)
     T = st.number_input("Tempo de reposição (t):", min_value=1, value=1, step=1)
     R_PCT = st.number_input("Risco Alvo (%):", min_value=0.01, max_value=99.99, value=5.00, step=1.0, format="%.2f")
+    custo_unitario = st.number_input("Custo Unitário por Peça (R$):", min_value=0.00, value=150.00, step=10.00, format="%.2f")
 
     st.subheader("Click on button below to run this application:")    
     botao = st.button("Calcular Dimensionamento")        
@@ -329,13 +330,14 @@ if choice == menu[0]:
         df_p, x_p, m_val = calcular_poisson(L, N, T, risco)
         df_n, x_n, sigma_val = calcular_normal(L, N, T, risco)
         
-        n_10PCT = max(1, int(np.ceil(0.10 * N)))
+        # Novo Cálculo Financeiro solicitado: Custo unitário * x encontrado em Poisson
+        custo_total = custo_unitario * x_p
 
         st.subheader("Parâmetros Utilizados")
         col_m1, col_m2, col_m3 = st.columns(3)
         col_m1.metric("Valor Esperado de Falhas (m)", f"{m_val:.2f}")
         col_m2.metric("Risco Alvo", f"{R_PCT}%")
-        col_m3.metric("Regra dos 10%", f"{n_10PCT} peças")
+        col_m3.metric("Custo Total (Poisson)", f"R$ {custo_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
         st.divider()
 
@@ -366,4 +368,3 @@ if choice == menu[0]:
 if choice == menu[1]:
     st.header(menu[1])
     st.write("Configurações do Optimizer indisponíveis ou destinadas a rotinas de simulação futuras.")
-
