@@ -83,7 +83,7 @@ if not st.session_state.authenticated:
         }}
         
         .login-logo {{
-            max-height: 80px;
+            max-height: 100px;
             width: auto;
             margin-bottom: 15px;
         }}
