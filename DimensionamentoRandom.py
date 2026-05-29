@@ -35,7 +35,7 @@ LOGO_HTML = f'<img src="data:image/png;base64,{LOGO_BASE64}" class="login-logo">
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
-# ==========================================
+
 # TELA DE LOGIN (Branca com Padrão Verde / Materialis)
 # ==========================================
 if not st.session_state.authenticated:
@@ -186,9 +186,8 @@ if not st.session_state.authenticated:
     st.stop()  
 
 
-# ==========================================
 # CSS DA TELA PRINCIPAL (Pós-Login - Estilo Verde)
-# ==========================================
+
 st.markdown("""
     <style>
     .stApp { background-color: #fdfdfd; }
@@ -217,9 +216,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# ==========================================
-# FUNÇÕES DE CÁLCULO
-# ==========================================
+
 def calcular_poisson(lmbda, n, t, risco_alvo):
     m = lmbda * n * t
     x = 0
@@ -289,9 +286,6 @@ def calcular_normal(lmbda, n, t, risco_alvo):
     return df, x_ideal, sigma
 
 
-# ==========================================
-# TELA PRINCIPAL (Template adaptado do main.py)
-# ==========================================
 
 # Criando 3 colunas para centralizar a imagem no topo
 col_img1, col_img2, col_img3 = st.columns(3)
@@ -313,7 +307,7 @@ if choice == menu[0]:
     
     st.subheader("Insert the parameter values below:")
     
-    # BARRAS DE INPUT NO MEIO DA TELA
+    # BARRAS DE INPUT 
     L = st.number_input("Lambda (taxa de falha):", min_value=0.0000, value=0.05, step=0.01, format="%.6f")
     N = st.number_input("Número de máquinas ativas (n):", min_value=1, value=10, step=1)
     T = st.number_input("Tempo de reposição (t):", min_value=1, value=1, step=1)
@@ -337,7 +331,7 @@ if choice == menu[0]:
         col_m1, col_m2, col_m3 = st.columns(3)
         col_m1.metric("Valor Esperado de Falhas (m)", f"{m_val:.2f}")
         col_m2.metric("Risco Alvo", f"{R_PCT}%")
-        col_m3.metric("Custo Total (Poisson)", f"R$ {custo_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+        col_m3.metric("Custo Total", f"R$ {custo_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
         st.divider()
 
@@ -363,7 +357,7 @@ if choice == menu[0]:
             if LG >= 20:
                 exibir_resumo_streamlit(df_n, x_n, "Aproximação Normal")
             else:
-                st.info("Aproximação pela Normal não recomendada (Lambda * N < 20).")
+                st.info("Aproximação pela Normal não recomendada.")
 
 if choice == menu[1]:
     st.header(menu[1])
