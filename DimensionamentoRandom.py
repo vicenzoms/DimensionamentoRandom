@@ -299,7 +299,7 @@ except Exception:
 st.markdown("<h2 style='text-align: center; color: #388E3C;'>Sistema de Dimensionamento de Sobressalentes</h2>", unsafe_allow_html=True)
 
 # Menu drop-down de seleção apenas na barra lateral
-menu = ["Analytical", "Optimizer"]
+menu = ["Default", "Others"]
 choice = st.sidebar.selectbox("Select here", menu)
 
 if choice == menu[0]:
