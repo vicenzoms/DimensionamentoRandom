@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Sistema de Dimensionamento de Sobressalentes - Grupo RANDOM
+Spare Parts Inventory Sizing System - Grupo RANDOM
 """
 
 import streamlit as st
@@ -296,7 +296,7 @@ except Exception:
     pass
 
 # Título centralizado no meio da tela
-st.markdown("<h2 style='text-align: center; color: #388E3C;'>Sistema de Dimensionamento de Sobressalentes</h2>", unsafe_allow_html=True)
+st.markdown("<h2 style='text-align: center; color: #388E3C;'>Spare Parts Inventory Sizing System</h2>", unsafe_allow_html=True)
 
 # Menu drop-down de seleção apenas na barra lateral
 menu = ["Default", "Others"]
