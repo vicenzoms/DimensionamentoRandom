@@ -185,7 +185,7 @@ if not st.session_state.authenticated:
     st.stop()  
 
 
-# CSS DA TELA PRINCIPAL (Pós-Login - Estilo Verde)
+# CSS DA TELA PRINCIPAL 
 st.markdown("""
     <style>
     .stApp { background-color: #fdfdfd; }
@@ -214,7 +214,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# FUNÇÕES AUXILIARES
+# FUNÇÕES DE DISTRIBUIÇÃO ESTATISTICA)
 def calcular_poisson(lmbda, n, t, risco_alvo):
     m = lmbda * n * t
     x = 0
@@ -312,9 +312,9 @@ st.markdown("<h2 style='text-align: center; color: #388E3C;'>Spare Parts Invento
 menu = ["Analytical", "Optimizer", "Optimizer MA"]
 choice = st.sidebar.selectbox("Select here", menu)
 
-# ==========================================
-# MODO 1: ANALYTICAL (SITUAÇÃO ATUAL)
-# ==========================================
+
+# ANALYTICAL
+
 if choice == menu[0]:
     st.header(menu[0])
     
@@ -322,7 +322,7 @@ if choice == menu[0]:
     st.write("Insira a quantidade de peças sobressalentes em uso e os parâmetros operacionais para calcular a margem de segurança e o custo atual.")
     
     # BARRAS DE INPUT
-    Q_atual = st.number_input("Quantidade atual de peças (Q):", min_value=0, value=5, step=1)
+    Q_atual = st.number_input("Quantidade atual de peças Sobressalentes (x):", min_value=0, value=5, step=1)
     L = st.number_input("Lambda (taxa de falha):", min_value=0.0000, value=0.05, step=0.01, format="%.6f")
     N = st.number_input("Número de máquinas ativas (n):", min_value=1, value=10, step=1)
     T = st.number_input("Tempo de reposição (t):", min_value=1, value=1, step=1)
@@ -376,11 +376,11 @@ if choice == menu[0]:
                 exibir_resumo_streamlit(df_n_analitico, Q_atual, "Aproximação Normal", texto_destaque="Quantidade Atual")
             else:
                 st.subheader("Aproximação Normal")
-                st.warning("Aproximação pela Normal não recomendada (Lambda * n < 20).")
+                st.warning("Aproximação pela Normal não recomendada.")
 
-# ==========================================
-# MODO 2: OPTIMIZER (CÁLCULO DO VALOR ÓTIMO)
-# ==========================================
+
+# OPTIMIZER
+
 elif choice == menu[1]:
     st.header(menu[1])
     
@@ -423,11 +423,11 @@ elif choice == menu[1]:
                 exibir_resumo_streamlit(df_n, x_n, "Aproximação Normal")
             else:
                 st.subheader("Aproximação Normal")
-                st.warning("Aproximação pela Normal não recomendada (Lambda * n < 20).")
+                st.warning("Aproximação pela Normal não recomendada.")
 
 # ==========================================
 # MODO 3: OPTIMIZER MA (NÃO DISPONÍVEL)
 # ==========================================
 elif choice == menu[2]:
     st.header(menu[2])
-    st.info("⚠️ Este modo ainda não está disponível.")
+    st.info("Este modo ainda não está disponível.")
