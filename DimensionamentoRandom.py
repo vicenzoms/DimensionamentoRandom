@@ -429,9 +429,9 @@ elif choice == menu[1]:
                 st.subheader("Aproximação Normal")
                 st.warning("Aproximação pela Normal não recomendada.")
 
-# ==========================================
-# MODO 3: OPTIMIZER MA (NÃO DISPONÍVEL)
-# ==========================================
+
+#  OPTIMIZER MA
+
 elif choice == menu[2]:
     st.header(menu[2])
     st.info(" Este modo ainda não está disponível.")
