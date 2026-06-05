@@ -435,4 +435,3 @@ elif choice == menu[1]:
 elif choice == menu[2]:
     st.header(menu[2])
     st.info("⚠️ Este modo ainda não está disponível.")
-      
