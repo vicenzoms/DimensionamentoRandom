@@ -35,7 +35,6 @@ LOGO_HTML = f'<img src="data:image/png;base64,{LOGO_BASE64}" class="login-logo">
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
-
 # TELA DE LOGIN (Branca com Padrão Verde / Materialis)
 # ==========================================
 if not st.session_state.authenticated:
@@ -187,7 +186,6 @@ if not st.session_state.authenticated:
 
 
 # CSS DA TELA PRINCIPAL (Pós-Login - Estilo Verde)
-
 st.markdown("""
     <style>
     .stApp { background-color: #fdfdfd; }
@@ -216,7 +214,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-
+# FUNÇÕES AUXILIARES
 def calcular_poisson(lmbda, n, t, risco_alvo):
     m = lmbda * n * t
     x = 0
@@ -285,9 +283,23 @@ def calcular_normal(lmbda, n, t, risco_alvo):
     })
     return df, x_ideal, sigma
 
+def exibir_resumo_streamlit(df, x_alvo, titulo, texto_destaque="Quantidade Recomendada"):
+    """Exibe o DataFrame formatado em volta do valor de x desejado."""
+    st.subheader(titulo)
+    
+    idx_inicio = max(0, x_alvo - 1)
+    # Pega a linha antes, a linha alvo e a linha depois para mostrar contexto
+    resumo = df.iloc[idx_inicio : x_alvo + 2].copy()
+    
+    resumo['P(X=x)'] = resumo['P(X=x)'].apply(lambda v: f"{v:.4%}")
+    resumo['Margem Seg.'] = resumo['Margem Seg.'].apply(lambda v: f"{v:.4%}")
+    resumo['Risco'] = resumo['Risco'].apply(lambda v: f"{v:.4%}")
+    
+    st.success(f"**{texto_destaque}:** {x_alvo} peças")
+    st.dataframe(resumo, use_container_width=True, hide_index=True)
 
 
-# Criando 3 colunas para centralizar a imagem no topo
+# INTERFACE PRINCIPAL
 col_img1, col_img2, col_img3 = st.columns(3)
 try:
     foto = Image.open('randomen.png')
@@ -295,10 +307,8 @@ try:
 except Exception:
     pass
 
-# Título centralizado no meio da tela
 st.markdown("<h2 style='text-align: center; color: #388E3C;'>Spare Parts Inventory Sizing System</h2>", unsafe_allow_html=True)
 
-# Menu drop-down de seleção apenas na barra lateral
 menu = ["Analytical", "Optimizer", "Optimizer MA"]
 choice = st.sidebar.selectbox("Select here", menu)
 
@@ -309,42 +319,63 @@ if choice == menu[0]:
     st.header(menu[0])
     
     st.subheader("Avaliação da Situação Atual do Sistema")
-    st.write("Insira a quantidade de peças sobressalentes em uso e os parâmetros operacionais para calcular a margem de segurança e o risco atual.")
+    st.write("Insira a quantidade de peças sobressalentes em uso e os parâmetros operacionais para calcular a margem de segurança e o custo atual.")
     
     # BARRAS DE INPUT
     Q_atual = st.number_input("Quantidade atual de peças (Q):", min_value=0, value=5, step=1)
     L = st.number_input("Lambda (taxa de falha):", min_value=0.0000, value=0.05, step=0.01, format="%.6f")
     N = st.number_input("Número de máquinas ativas (n):", min_value=1, value=10, step=1)
     T = st.number_input("Tempo de reposição (t):", min_value=1, value=1, step=1)
+    custo_unitario = st.number_input("Custo Unitário por Peça (R$):", min_value=0.00, value=150.00, step=10.00, format="%.2f")
     
     botao_analytical = st.button("Calcular Situação Atual")
     
     if botao_analytical:
         m_val = L * N * T
         LG = L * N
-        
-        # Cálculos de probabilidade acumulada (Margem de Segurança) e Risco
-        ms_poisson = poisson.cdf(Q_atual, m_val)
-        risco_poisson = max(1.0 - ms_poisson, 0.0)
+        custo_total = Q_atual * custo_unitario
         
         st.subheader("Parâmetros do Sistema")
-        st.metric("Valor Esperado de Falhas (m)", f"{m_val:.2f}")
+        col_m1, col_m2 = st.columns(2)
+        col_m1.metric("Valor Esperado de Falhas (m)", f"{m_val:.2f}")
+        col_m2.metric("Custo Total (Inventário Atual)", f"R$ {custo_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
         st.divider()
         
+        # Gerar DataFrame de Poisson até Q_atual + 2 para exibir na tabela
+        lista_x, lista_p, lista_margem, lista_risco = [], [], [], []
+        prob_acumulada = 0
+        for x in range(Q_atual + 3):
+            p_x = poisson.pmf(x, m_val)
+            prob_acumulada += p_x
+            lista_x.append(x)
+            lista_p.append(p_x)
+            lista_margem.append(prob_acumulada)
+            lista_risco.append(max(1 - prob_acumulada, 0.0))
+        df_p_analitico = pd.DataFrame({'x': lista_x, 'P(X=x)': lista_p, 'Margem Seg.': lista_margem, 'Risco': lista_risco})
+        
+        # Exibição
         col_t1, col_t2 = st.columns(2)
         
         with col_t1:
-            st.subheader("Método de Poisson")
-            st.info(f"**Margem de Segurança:** {ms_poisson:.4%}\n\n**Risco:** {risco_poisson:.4%}")
+            exibir_resumo_streamlit(df_p_analitico, Q_atual, "Distribuição de Poisson", texto_destaque="Quantidade Atual")
             
         with col_t2:
-            st.subheader("Aproximação Normal")
             if LG >= 20:
+                # Gerar DataFrame da Normal até Q_atual + 2
+                lista_x_n, lista_p_n, lista_margem_n, lista_risco_n = [], [], [], []
                 sigma = np.sqrt(m_val)
-                ms_normal = norm.cdf(Q_atual, loc=m_val, scale=sigma)
-                risco_normal = max(1.0 - ms_normal, 0.0)
-                st.success(f"**Margem de Segurança:** {ms_normal:.4%}\n\n**Risco:** {risco_normal:.4%}")
+                for x in range(Q_atual + 3):
+                    prob_acum_n = norm.cdf(x, loc=m_val, scale=sigma)
+                    p_x_n = prob_acum_n if x == 0 else prob_acum_n - norm.cdf(x - 1, loc=m_val, scale=sigma)
+                    lista_x_n.append(x)
+                    lista_p_n.append(p_x_n)
+                    lista_margem_n.append(prob_acum_n)
+                    lista_risco_n.append(max(1 - prob_acum_n, 0.0))
+                df_n_analitico = pd.DataFrame({'x': lista_x_n, 'P(X=x)': lista_p_n, 'Margem Seg.': lista_margem_n, 'Risco': lista_risco_n})
+                
+                exibir_resumo_streamlit(df_n_analitico, Q_atual, "Aproximação Normal", texto_destaque="Quantidade Atual")
             else:
+                st.subheader("Aproximação Normal")
                 st.warning("Aproximação pela Normal não recomendada (Lambda * n < 20).")
 
 # ==========================================
@@ -382,19 +413,6 @@ elif choice == menu[1]:
 
         st.divider()
 
-        def exibir_resumo_streamlit(df, x_alvo, titulo):
-            st.subheader(titulo)
-            
-            idx_inicio = max(0, x_alvo - 1)
-            resumo = df.iloc[idx_inicio : x_alvo + 2].copy()
-            
-            resumo['P(X=x)'] = resumo['P(X=x)'].apply(lambda v: f"{v:.4%}")
-            resumo['Margem Seg.'] = resumo['Margem Seg.'].apply(lambda v: f"{v:.4%}")
-            resumo['Risco'] = resumo['Risco'].apply(lambda v: f"{v:.4%}")
-            
-            st.success(f"**Quantidade Recomendada:** {x_alvo} peças")
-            st.dataframe(resumo, use_container_width=True, hide_index=True)
-
         col_tabela1, col_tabela2 = st.columns(2)
         
         with col_tabela1:
@@ -404,7 +422,8 @@ elif choice == menu[1]:
             if LG >= 20:
                 exibir_resumo_streamlit(df_n, x_n, "Aproximação Normal")
             else:
-                st.warning("Aproximação pela Normal não recomendada.")
+                st.subheader("Aproximação Normal")
+                st.warning("Aproximação pela Normal não recomendada (Lambda * n < 20).")
 
 # ==========================================
 # MODO 3: OPTIMIZER MA (NÃO DISPONÍVEL)
