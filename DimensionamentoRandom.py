@@ -35,8 +35,8 @@ LOGO_HTML = f'<img src="data:image/png;base64,{LOGO_BASE64}" class="login-logo">
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
-# TELA DE LOGIN 
-
+# TELA DE LOGIN (Branca com Padrão Verde / Materialis)
+# ==========================================
 if not st.session_state.authenticated:
     st.markdown(
         f"""
@@ -316,9 +316,9 @@ st.markdown("<h2 style='text-align: center; color: #388E3C;'>Spare Parts Invento
 menu = ["Analytical", "Optimizer", "Optimizer MA"]
 choice = st.sidebar.selectbox("Select here", menu)
 
-
-#  ANALYTICAL
-
+# ==========================================
+# MODO 1: ANALYTICAL (SITUAÇÃO ATUAL)
+# ==========================================
 if choice == menu[0]:
     st.header(menu[0])
     
@@ -326,7 +326,7 @@ if choice == menu[0]:
     st.write("Insira a quantidade de peças sobressalentes em uso e os parâmetros operacionais para calcular a margem de segurança e o custo atual.")
     
     # BARRAS DE INPUT
-    Q_atual = st.number_input("Quantidade atual de peças Sobressalentes (x):", min_value=0, value=5, step=1)
+    Q_atual = st.number_input("Quantidade atual de peças (Q):", min_value=0, value=5, step=1)
     L = st.number_input("Lambda (taxa de falha):", min_value=0.0000, value=0.05, step=0.01, format="%.6f")
     N = st.number_input("Número de máquinas ativas (n):", min_value=1, value=10, step=1)
     T = st.number_input("Tempo de reposição (t):", min_value=1, value=1, step=1)
@@ -380,11 +380,11 @@ if choice == menu[0]:
                 exibir_resumo_streamlit(df_n_analitico, Q_atual, "Aproximação Normal", texto_destaque="Quantidade Atual", mostrar_contexto=False)
             else:
                 st.subheader("Aproximação Normal")
-                st.warning("Aproximação pela Normal não recomendada.")
+                st.warning("Aproximação pela Normal não recomendada (Lambda * n < 20).")
 
-
-# OPTIMIZER 
-
+# ==========================================
+# MODO 2: OPTIMIZER (CÁLCULO DO VALOR ÓTIMO)
+# ==========================================
 elif choice == menu[1]:
     st.header(menu[1])
     
@@ -427,11 +427,11 @@ elif choice == menu[1]:
                 exibir_resumo_streamlit(df_n, x_n, "Aproximação Normal", mostrar_contexto=True)
             else:
                 st.subheader("Aproximação Normal")
-                st.warning("Aproximação pela Normal não recomendada.")
+                st.warning("Aproximação pela Normal não recomendada (Lambda * n < 20).")
 
-
-#  OPTIMIZER MA
-
+# ==========================================
+# MODO 3: OPTIMIZER MA (MANUTENÇÃO ADITIVA)
+# ==========================================
 elif choice == menu[2]:
     st.header(menu[2])
     st.subheader("Otimização com Manutenção Aditiva (Mix de Peças)")
@@ -471,45 +471,53 @@ elif choice == menu[2]:
         melhor_risco = 1.0
         melhor_m = 0.0
         
-        # Limite de busca para o Grid Search (pode aumentar se necessário para sistemas muito grandes)
-        limite_busca = 40 
+        # Pré-cálculo para o critério de parada seguro
+        custo_minimo_possivel = min(C_trad, C_3d)
         
-        # Algoritmo de Busca (Grid Search)
-        for x_trad in range(limite_busca):
-            for x_3d in range(limite_busca):
-                total_pecas = x_trad + x_3d
-                if total_pecas == 0:
+        total_pecas = 1
+        
+        # O loop roda aumentando o número total de peças até o momento em que se 
+        # torne matematicamente impossível achar um custo mais baixo.
+        while True:
+            # Critério de parada: Se o custo da combinação mais barata possível com o
+            # número de peças atual já for maior ou igual ao melhor custo que achamos,
+            # não adianta continuar procurando com inventários maiores.
+            if total_pecas * custo_minimo_possivel >= melhor_custo:
+                break
+                
+            # Testa todas as proporções possíveis para este número total de peças
+            for x_trad in range(total_pecas + 1):
+                x_3d = total_pecas - x_trad
+                
+                custo_atual = (x_trad * C_trad) + (x_3d * C_3d)
+                
+                # Se o custo dessa combinação já ultrapassa o melhor achado, ignora
+                if custo_atual >= melhor_custo:
                     continue
                     
-                # -------------------------------------------------------------------
-                # MODELO MATEMÁTICO (Aproximação por Média Ponderada do m)
-                # O risco depende da proporção de peças no inventário
-                # -------------------------------------------------------------------
+                # Modelo Matemático (Média Ponderada)
                 prop_trad = x_trad / total_pecas
                 prop_3d = x_3d / total_pecas
                 
-                # m = lambda * n * t
                 m_trad_puro = L_trad * N_maq * T_trad
                 m_3d_puro = L_3d * N_maq * T_3d
                 
                 m_equivalente = (prop_trad * m_trad_puro) + (prop_3d * m_3d_puro)
                 
-                # Calcula o risco usando a Poisson para o total de peças com o m_equivalente
+                # Cálculo de probabilidade usando o m equivalente do mix
                 prob_acumulada = poisson.cdf(total_pecas, m_equivalente)
                 risco_atual = max(1.0 - prob_acumulada, 0.0)
                 
-                # Verifica se respeita o critério de risco
+                # Se atinge o risco alvo e é mais barato, atualizamos o "vencedor"
                 if risco_atual <= risco_alvo:
-                    custo_atual = (x_trad * C_trad) + (x_3d * C_3d)
-                    
-                    # Se respeita o risco e é mais barato, guarda como a melhor opção
-                    if custo_atual < melhor_custo:
-                        melhor_custo = custo_atual
-                        melhor_mix = (x_trad, x_3d)
-                        melhor_risco = risco_atual
-                        melhor_m = m_equivalente
+                    melhor_custo = custo_atual
+                    melhor_mix = (x_trad, x_3d)
+                    melhor_risco = risco_atual
+                    melhor_m = m_equivalente
+            
+            total_pecas += 1
 
-        # Resultados Visuais
+        # Apresentação dos Resultados Visuais
         if melhor_mix is not None:
             st.success("✅ Combinação ótima encontrada com sucesso!")
             
@@ -527,7 +535,7 @@ elif choice == menu[2]:
             indicadores_col2.metric("Risco Obtido", f"{melhor_risco:.4%}")
             indicadores_col3.metric("Custo Total Mínimo", f"R$ {melhor_custo:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
             
-            # Gráfico ou Tabela ilustrativa simples do resultado
+            # Tabela de Subtotais
             df_resultado = pd.DataFrame({
                 "Tipo": ["Tradicional", "Impressão 3D"],
                 "Quantidade": [melhor_mix[0], melhor_mix[1]],
@@ -537,6 +545,6 @@ elif choice == menu[2]:
             st.dataframe(df_resultado, use_container_width=True, hide_index=True)
             
         else:
-            st.error(f"❌ Não foi possível encontrar uma combinação que atinja o Risco Alvo de {R_PCT_MA}% dentro do limite estabelecido ({limite_busca} peças de cada). Tente relaxar os parâmetros ou aumentar o limite de busca no código.")
-
-
+            st.error("❌ Não foi possível encontrar uma combinação que atinja o Risco Alvo com os parâmetros atuais. Revise os valores de input.")
+            
+      
