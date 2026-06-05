@@ -453,7 +453,7 @@ elif choice == menu[2]:
         C_3d = st.number_input("Custo de Impressão (R$):", min_value=0.00, value=100.00, step=10.00, format="%.2f", key="c_3d")
         
     st.divider()
-    st.markdown("#### 📊 Parâmetros Globais do Sistema")
+    st.markdown("####  Parâmetros Globais do Sistema")
     col3, col4 = st.columns(2)
     with col3:
         N_maq = st.number_input("Número de máquinas ativas (n):", min_value=1, value=10, step=1, key="n_maq_ma")
