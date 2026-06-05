@@ -185,7 +185,7 @@ if not st.session_state.authenticated:
     st.stop()  
 
 
-# CSS DA TELA PRINCIPAL 
+# CSS DA TELA PRINCIPAL (Pós-Login - Estilo Verde)
 st.markdown("""
     <style>
     .stApp { background-color: #fdfdfd; }
@@ -214,7 +214,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# FUNÇÕES DE DISTRIBUIÇÃO ESTATISTICA)
+# FUNÇÕES AUXILIARES
 def calcular_poisson(lmbda, n, t, risco_alvo):
     m = lmbda * n * t
     x = 0
@@ -283,13 +283,17 @@ def calcular_normal(lmbda, n, t, risco_alvo):
     })
     return df, x_ideal, sigma
 
-def exibir_resumo_streamlit(df, x_alvo, titulo, texto_destaque="Quantidade Recomendada"):
-    """Exibe o DataFrame formatado em volta do valor de x desejado."""
+def exibir_resumo_streamlit(df, x_alvo, titulo, texto_destaque="Quantidade Recomendada", mostrar_contexto=True):
+    """Exibe o DataFrame formatado. Se mostrar_contexto for False, exibe apenas a linha do x_alvo."""
     st.subheader(titulo)
     
-    idx_inicio = max(0, x_alvo - 1)
-    # Pega a linha antes, a linha alvo e a linha depois para mostrar contexto
-    resumo = df.iloc[idx_inicio : x_alvo + 2].copy()
+    if mostrar_contexto:
+        # Pega a linha antes, a linha alvo e a linha depois para mostrar contexto (Usado no Optimizer)
+        idx_inicio = max(0, x_alvo - 1)
+        resumo = df.iloc[idx_inicio : x_alvo + 2].copy()
+    else:
+        # Pega apenas a linha onde x é igual ao x_alvo (Usado no Analytical)
+        resumo = df[df['x'] == x_alvo].copy()
     
     resumo['P(X=x)'] = resumo['P(X=x)'].apply(lambda v: f"{v:.4%}")
     resumo['Margem Seg.'] = resumo['Margem Seg.'].apply(lambda v: f"{v:.4%}")
@@ -312,9 +316,9 @@ st.markdown("<h2 style='text-align: center; color: #388E3C;'>Spare Parts Invento
 menu = ["Analytical", "Optimizer", "Optimizer MA"]
 choice = st.sidebar.selectbox("Select here", menu)
 
-
-# ANALYTICAL
-
+# ==========================================
+# MODO 1: ANALYTICAL (SITUAÇÃO ATUAL)
+# ==========================================
 if choice == menu[0]:
     st.header(menu[0])
     
@@ -322,7 +326,7 @@ if choice == menu[0]:
     st.write("Insira a quantidade de peças sobressalentes em uso e os parâmetros operacionais para calcular a margem de segurança e o custo atual.")
     
     # BARRAS DE INPUT
-    Q_atual = st.number_input("Quantidade atual de peças Sobressalentes (x):", min_value=0, value=5, step=1)
+    Q_atual = st.number_input("Quantidade atual de peças (Q):", min_value=0, value=5, step=1)
     L = st.number_input("Lambda (taxa de falha):", min_value=0.0000, value=0.05, step=0.01, format="%.6f")
     N = st.number_input("Número de máquinas ativas (n):", min_value=1, value=10, step=1)
     T = st.number_input("Tempo de reposição (t):", min_value=1, value=1, step=1)
@@ -341,10 +345,10 @@ if choice == menu[0]:
         col_m2.metric("Custo Total (Inventário Atual)", f"R$ {custo_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
         st.divider()
         
-        # Gerar DataFrame de Poisson até Q_atual + 2 para exibir na tabela
+        # Gerar DataFrame de Poisson até Q_atual para exibir na tabela
         lista_x, lista_p, lista_margem, lista_risco = [], [], [], []
         prob_acumulada = 0
-        for x in range(Q_atual + 3):
+        for x in range(Q_atual + 1):
             p_x = poisson.pmf(x, m_val)
             prob_acumulada += p_x
             lista_x.append(x)
@@ -357,14 +361,14 @@ if choice == menu[0]:
         col_t1, col_t2 = st.columns(2)
         
         with col_t1:
-            exibir_resumo_streamlit(df_p_analitico, Q_atual, "Distribuição de Poisson", texto_destaque="Quantidade Atual")
+            exibir_resumo_streamlit(df_p_analitico, Q_atual, "Distribuição de Poisson", texto_destaque="Quantidade Atual", mostrar_contexto=False)
             
         with col_t2:
             if LG >= 20:
-                # Gerar DataFrame da Normal até Q_atual + 2
+                # Gerar DataFrame da Normal até Q_atual
                 lista_x_n, lista_p_n, lista_margem_n, lista_risco_n = [], [], [], []
                 sigma = np.sqrt(m_val)
-                for x in range(Q_atual + 3):
+                for x in range(Q_atual + 1):
                     prob_acum_n = norm.cdf(x, loc=m_val, scale=sigma)
                     p_x_n = prob_acum_n if x == 0 else prob_acum_n - norm.cdf(x - 1, loc=m_val, scale=sigma)
                     lista_x_n.append(x)
@@ -373,14 +377,14 @@ if choice == menu[0]:
                     lista_risco_n.append(max(1 - prob_acum_n, 0.0))
                 df_n_analitico = pd.DataFrame({'x': lista_x_n, 'P(X=x)': lista_p_n, 'Margem Seg.': lista_margem_n, 'Risco': lista_risco_n})
                 
-                exibir_resumo_streamlit(df_n_analitico, Q_atual, "Aproximação Normal", texto_destaque="Quantidade Atual")
+                exibir_resumo_streamlit(df_n_analitico, Q_atual, "Aproximação Normal", texto_destaque="Quantidade Atual", mostrar_contexto=False)
             else:
                 st.subheader("Aproximação Normal")
-                st.warning("Aproximação pela Normal não recomendada.")
+                st.warning("Aproximação pela Normal não recomendada (Lambda * n < 20).")
 
-
-# OPTIMIZER
-
+# ==========================================
+# MODO 2: OPTIMIZER (CÁLCULO DO VALOR ÓTIMO)
+# ==========================================
 elif choice == menu[1]:
     st.header(menu[1])
     
@@ -409,25 +413,25 @@ elif choice == menu[1]:
         col_m1, col_m2, col_m3 = st.columns(3)
         col_m1.metric("Valor Esperado de Falhas (m)", f"{m_val:.2f}")
         col_m2.metric("Risco Alvo", f"{R_PCT}%")
-        col_m3.metric("Custo Total", f"R$ {custo_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+        col_m3.metric("Custo Total (Inventário Ótimo)", f"R$ {custo_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
         st.divider()
 
         col_tabela1, col_tabela2 = st.columns(2)
         
         with col_tabela1:
-            exibir_resumo_streamlit(df_p, x_p, "Distribuição de Poisson")
+            exibir_resumo_streamlit(df_p, x_p, "Distribuição de Poisson", mostrar_contexto=True)
             
         with col_tabela2:
             if LG >= 20:
-                exibir_resumo_streamlit(df_n, x_n, "Aproximação Normal")
+                exibir_resumo_streamlit(df_n, x_n, "Aproximação Normal", mostrar_contexto=True)
             else:
                 st.subheader("Aproximação Normal")
-                st.warning("Aproximação pela Normal não recomendada.")
+                st.warning("Aproximação pela Normal não recomendada (Lambda * n < 20).")
 
 # ==========================================
 # MODO 3: OPTIMIZER MA (NÃO DISPONÍVEL)
 # ==========================================
 elif choice == menu[2]:
     st.header(menu[2])
-    st.info("Este modo ainda não está disponível.")
+    st.info("⚠️ Este modo ainda não está disponível.")
