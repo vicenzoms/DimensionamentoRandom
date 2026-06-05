@@ -299,11 +299,59 @@ except Exception:
 st.markdown("<h2 style='text-align: center; color: #388E3C;'>Spare Parts Inventory Sizing System</h2>", unsafe_allow_html=True)
 
 # Menu drop-down de seleção apenas na barra lateral
-menu = ["Default", "Additive Maintenance"]
+menu = ["Analytical", "Optimizer", "Optimizer MA"]
 choice = st.sidebar.selectbox("Select here", menu)
 
+# ==========================================
+# MODO 1: ANALYTICAL (SITUAÇÃO ATUAL)
+# ==========================================
 if choice == menu[0]:
     st.header(menu[0])
+    
+    st.subheader("Avaliação da Situação Atual do Sistema")
+    st.write("Insira a quantidade de peças sobressalentes em uso e os parâmetros operacionais para calcular a margem de segurança e o risco atual.")
+    
+    # BARRAS DE INPUT
+    Q_atual = st.number_input("Quantidade atual de peças (Q):", min_value=0, value=5, step=1)
+    L = st.number_input("Lambda (taxa de falha):", min_value=0.0000, value=0.05, step=0.01, format="%.6f")
+    N = st.number_input("Número de máquinas ativas (n):", min_value=1, value=10, step=1)
+    T = st.number_input("Tempo de reposição (t):", min_value=1, value=1, step=1)
+    
+    botao_analytical = st.button("Calcular Situação Atual")
+    
+    if botao_analytical:
+        m_val = L * N * T
+        LG = L * N
+        
+        # Cálculos de probabilidade acumulada (Margem de Segurança) e Risco
+        ms_poisson = poisson.cdf(Q_atual, m_val)
+        risco_poisson = max(1.0 - ms_poisson, 0.0)
+        
+        st.subheader("Parâmetros do Sistema")
+        st.metric("Valor Esperado de Falhas (m)", f"{m_val:.2f}")
+        st.divider()
+        
+        col_t1, col_t2 = st.columns(2)
+        
+        with col_t1:
+            st.subheader("Método de Poisson")
+            st.info(f"**Margem de Segurança:** {ms_poisson:.4%}\n\n**Risco:** {risco_poisson:.4%}")
+            
+        with col_t2:
+            st.subheader("Aproximação Normal")
+            if LG >= 20:
+                sigma = np.sqrt(m_val)
+                ms_normal = norm.cdf(Q_atual, loc=m_val, scale=sigma)
+                risco_normal = max(1.0 - ms_normal, 0.0)
+                st.success(f"**Margem de Segurança:** {ms_normal:.4%}\n\n**Risco:** {risco_normal:.4%}")
+            else:
+                st.warning("Aproximação pela Normal não recomendada (Lambda * n < 20).")
+
+# ==========================================
+# MODO 2: OPTIMIZER (CÁLCULO DO VALOR ÓTIMO)
+# ==========================================
+elif choice == menu[1]:
+    st.header(menu[1])
     
     st.subheader("Insert the parameter values below:")
     
@@ -358,6 +406,9 @@ if choice == menu[0]:
             else:
                 st.warning("Aproximação pela Normal não recomendada.")
 
-if choice == menu[1]:
-    st.header(menu[1])
-    st.write("Configurações do Optimizer indisponíveis ou destinadas a rotinas de simulação futuras.")
+# ==========================================
+# MODO 3: OPTIMIZER MA (NÃO DISPONÍVEL)
+# ==========================================
+elif choice == menu[2]:
+    st.header(menu[2])
+    st.info("⚠️ Este modo ainda não está disponível.")
